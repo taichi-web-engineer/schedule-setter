@@ -46,10 +46,17 @@ function handleFormSubmit(event) {
     return;
   }
 
+  const businessDaysFromTwelve = businessDays.filter((date) => date.getDate() >= 12);
+  if (businessDaysFromTwelve.length < 2) {
+    renderMessage("この月の12日以降に平日（祝日除く）が2日未満です。");
+    return;
+  }
+
   const computedDates = {
     second: businessDays[1],
     third: businessDays[2],
     secondFromEight: businessDaysFromEight[1],
+    secondFromTwelve: businessDaysFromTwelve[1],
   };
 
   renderResult(computedDates);
@@ -108,11 +115,12 @@ function renderMessage(message) {
 
 function renderResult(dates) {
   resultSection.innerHTML = "";
-  const { second, third, secondFromEight } = dates;
+  const { second, third, secondFromEight, secondFromTwelve } = dates;
   lastComputedDates = {
     second: new Date(second.getTime()),
     third: new Date(third.getTime()),
     secondFromEight: new Date(secondFromEight.getTime()),
+    secondFromTwelve: new Date(secondFromTwelve.getTime()),
   };
 
   const secondValue = document.createElement("p");
@@ -127,13 +135,17 @@ function renderResult(dates) {
   fourthValue.className = "result-value";
   fourthValue.textContent = `楽天売却②：${formatPlainDate(lastComputedDates.secondFromEight)}`;
 
+  const fifthValue = document.createElement("p");
+  fifthValue.className = "result-value";
+  fifthValue.textContent = `楽天売却③：${formatPlainDate(lastComputedDates.secondFromTwelve)}`;
+
   const button = document.createElement("button");
   button.type = "button";
   button.className = "calendar-button";
   button.textContent = "カレンダーに追加";
   button.addEventListener("click", handleCalendarButtonClick);
 
-  resultSection.append(secondValue, thirdValue, fourthValue, button);
+  resultSection.append(secondValue, thirdValue, fourthValue, fifthValue, button);
 }
 
 const holidayCache = new Map();
@@ -181,7 +193,7 @@ function handleCalendarButtonClick() {
 }
 
 function buildCalendarAppleScript(dates) {
-  const { second, third, secondFromEight } = dates;
+  const { second, third, secondFromEight, secondFromTwelve } = dates;
   const monthNames = [
     "January",
     "February",
@@ -226,6 +238,9 @@ const createEventBlock = (summary, date) => {
   }
   if (secondFromEight) {
     blocks.push(createEventBlock("楽天売却②", secondFromEight));
+  }
+  if (secondFromTwelve) {
+    blocks.push(createEventBlock("楽天売却③", secondFromTwelve));
   }
 
   const scriptBody = blocks.join("\n\n");
