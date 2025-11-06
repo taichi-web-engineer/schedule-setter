@@ -40,6 +40,12 @@ function handleFormSubmit(event) {
     return;
   }
 
+  const businessDaysFromThree = businessDays.filter((date) => date.getDate() >= 3);
+  if (businessDaysFromThree.length < 2) {
+    renderMessage("この月の3日以降に平日（祝日除く）が2日未満です。");
+    return;
+  }
+
   const businessDaysFromEight = businessDays.filter((date) => date.getDate() >= 8);
   if (businessDaysFromEight.length < 2) {
     renderMessage("この月の8日以降に平日（祝日除く）が2日未満です。");
@@ -52,11 +58,19 @@ function handleFormSubmit(event) {
     return;
   }
 
+  const businessDaysFromTwentySix = businessDays.filter((date) => date.getDate() >= 26);
+  if (businessDaysFromTwentySix.length < 2) {
+    renderMessage("この月の26日以降に平日（祝日除く）が2日未満です。");
+    return;
+  }
+
   const computedDates = {
     second: businessDays[1],
     third: businessDays[2],
+    secondFromThree: businessDaysFromThree[1],
     secondFromEight: businessDaysFromEight[1],
     secondFromTwelve: businessDaysFromTwelve[1],
+    secondFromTwentySix: businessDaysFromTwentySix[1],
   };
 
   renderResult(computedDates);
@@ -115,12 +129,14 @@ function renderMessage(message) {
 
 function renderResult(dates) {
   resultSection.innerHTML = "";
-  const { second, third, secondFromEight, secondFromTwelve } = dates;
+  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix } = dates;
   lastComputedDates = {
     second: new Date(second.getTime()),
     third: new Date(third.getTime()),
+    secondFromThree: new Date(secondFromThree.getTime()),
     secondFromEight: new Date(secondFromEight.getTime()),
     secondFromTwelve: new Date(secondFromTwelve.getTime()),
+    secondFromTwentySix: new Date(secondFromTwentySix.getTime()),
   };
 
   const secondValue = document.createElement("p");
@@ -131,6 +147,10 @@ function renderResult(dates) {
   thirdValue.className = "result-value";
   thirdValue.textContent = `三菱UFJe売却：${formatPlainDate(lastComputedDates.third)}`;
 
+  const sbiValue = document.createElement("p");
+  sbiValue.className = "result-value";
+  sbiValue.textContent = `SBI売却：${formatPlainDate(lastComputedDates.secondFromThree)}`;
+
   const fourthValue = document.createElement("p");
   fourthValue.className = "result-value";
   fourthValue.textContent = `楽天売却②：${formatPlainDate(lastComputedDates.secondFromEight)}`;
@@ -139,13 +159,17 @@ function renderResult(dates) {
   fifthValue.className = "result-value";
   fifthValue.textContent = `楽天売却③：${formatPlainDate(lastComputedDates.secondFromTwelve)}`;
 
+  const sixthValue = document.createElement("p");
+  sixthValue.className = "result-value";
+  sixthValue.textContent = `三菱UFJ売却：${formatPlainDate(lastComputedDates.secondFromTwentySix)}`;
+
   const button = document.createElement("button");
   button.type = "button";
   button.className = "calendar-button";
   button.textContent = "カレンダーに追加";
   button.addEventListener("click", handleCalendarButtonClick);
 
-  resultSection.append(secondValue, thirdValue, fourthValue, fifthValue, button);
+  resultSection.append(secondValue, thirdValue, sbiValue, fourthValue, fifthValue, sixthValue, button);
 }
 
 const holidayCache = new Map();
@@ -193,7 +217,7 @@ function handleCalendarButtonClick() {
 }
 
 function buildCalendarAppleScript(dates) {
-  const { second, third, secondFromEight, secondFromTwelve } = dates;
+  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix } = dates;
   const monthNames = [
     "January",
     "February",
@@ -236,11 +260,17 @@ const createEventBlock = (summary, date) => {
   if (third) {
     blocks.push(createEventBlock("三菱UFJe売却", third));
   }
+  if (secondFromThree) {
+    blocks.push(createEventBlock("SBI売却", secondFromThree));
+  }
   if (secondFromEight) {
     blocks.push(createEventBlock("楽天売却②", secondFromEight));
   }
   if (secondFromTwelve) {
     blocks.push(createEventBlock("楽天売却③", secondFromTwelve));
+  }
+  if (secondFromTwentySix) {
+    blocks.push(createEventBlock("三菱UFJ売却", secondFromTwentySix));
   }
 
   const scriptBody = blocks.join("\n\n");
