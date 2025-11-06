@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>投信売却日チェッカー</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <h1>投信売却日チェッカー</h1>
+    <p class="lead">特定の年月の投信売却日を計算します。</p>
+    <form id="month-form" class="card">
+      <label for="month-input">年月</label>
+      <div class="input-group">
+        <input type="month" id="month-input" required>
+        <button type="submit">計算する</button>
+      </div>
+    </form>
+    <section id="result" class="card" aria-live="polite"></section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

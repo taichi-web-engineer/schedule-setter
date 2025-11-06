@@ -1,0 +1,160 @@
+:root {
+  color-scheme: light dark;
+  font-family: "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  line-height: 1.6;
+  background-color: #f5f7fa;
+  color: #2f3542;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 3rem 1rem;
+}
+
+.app {
+  width: min(520px, 100%);
+}
+
+.lead {
+  margin-top: 0.25rem;
+  margin-bottom: 1.5rem;
+  color: #57606f;
+}
+
+.card {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 18px 40px rgba(47, 69, 123, 0.12);
+}
+
+form.card {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+label {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.input-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+input[type="month"] {
+  flex: 1 1 200px;
+  min-width: 180px;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #ced6e0;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+input[type="month"]:focus {
+  outline: 3px solid rgba(53, 132, 228, 0.25);
+  border-color: #3584e4;
+}
+
+button {
+  background: linear-gradient(135deg, #3742fa, #5352ed);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 12px 24px rgba(55, 66, 250, 0.18);
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(83, 82, 237, 0.22);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: 0 8px 18px rgba(83, 82, 237, 0.2);
+}
+
+#result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 3rem;
+}
+
+.result-title {
+  font-size: 1rem;
+  color: #57606f;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.result-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e272e;
+}
+
+.supporting-text {
+  font-size: 0.95rem;
+  color: #57606f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    background-color: #0f172a;
+    color: #e2e8f0;
+  }
+
+  .lead {
+    color: #94a3b8;
+  }
+
+  .card {
+    background-color: rgba(15, 23, 42, 0.82);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
+  }
+
+  input[type="month"] {
+    background-color: rgba(14, 24, 44, 0.9);
+    border-color: #1e293b;
+    color: inherit;
+  }
+
+  input[type="month"]:focus {
+    outline-color: rgba(125, 211, 252, 0.5);
+  }
+
+  button {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
+  }
+
+  button:hover {
+    box-shadow: 0 16px 32px rgba(37, 99, 235, 0.35);
+  }
+
+  button:active {
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.4);
+  }
+
+  .result-value {
+    color: #f1f5f9;
+  }
+
+  .supporting-text {
+    color: #94a3b8;
+  }
+}
