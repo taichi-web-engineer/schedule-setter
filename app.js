@@ -10,6 +10,8 @@ const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 const defaultValue = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}`;
 monthInput.value = defaultValue;
 
+let lastComputedDate = null;
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   if (!monthInput.value) {
@@ -86,13 +88,20 @@ function renderMessage(message) {
 
 function renderResult(year, month, targetDate, businessDays) {
   resultSection.innerHTML = "";
+  lastComputedDate = new Date(targetDate.getTime());
 
   const value = document.createElement("p");
   value.className = "result-value";
   const formatted = `${targetDate.getFullYear()}/${targetDate.getMonth() + 1}/${targetDate.getDate()}`;
   value.textContent = `三菱UFJe売却：${formatted}`;
 
-  resultSection.append(value);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "calendar-button";
+  button.textContent = "カレンダーに追加";
+  button.addEventListener("click", handleCalendarButtonClick);
+
+  resultSection.append(value, button);
 }
 
 const holidayCache = new Map();
@@ -261,4 +270,51 @@ function toISODateString(date) {
 function parseISODateString(iso) {
   const [year, month, day] = iso.split("-").map(Number);
   return new Date(year, month - 1, day);
+}
+
+function handleCalendarButtonClick() {
+  if (!lastComputedDate) {
+    return;
+  }
+  const script = buildCalendarAppleScript(lastComputedDate);
+  const url = `applescript://com.apple.scripteditor?action=new&script=${encodeURIComponent(script)}`;
+  window.location.href = url;
+}
+
+function buildCalendarAppleScript(date) {
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const monthName = monthNames[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const baseScript = `
+set theDate to current date
+set year of theDate to ${year}
+set month of theDate to ${monthName}
+set day of theDate to ${day}
+set time of theDate to (8 * hours)
+copy theDate to theEndDate
+set time of theEndDate to (12 * hours)
+
+tell application "Calendar"
+  activate
+  tell calendar 1
+    make new event with properties {summary:"三菱UFJe売却", start date:theDate, end date:theEndDate}
+  end tell
+end tell
+`;
+  return baseScript.trim();
 }
