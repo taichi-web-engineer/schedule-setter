@@ -2,15 +2,13 @@ const form = document.getElementById("month-form");
 const monthInput = document.getElementById("month-input");
 const resultSection = document.getElementById("result");
 
-const weekdayNames = ["日", "月", "火", "水", "木", "金", "土"];
-
 // Ensure the month input defaults to the current month if possible.
 const now = new Date();
 const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 const defaultValue = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}`;
 monthInput.value = defaultValue;
 
-let lastComputedDate = null;
+let lastComputedDates = null;
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -66,20 +64,16 @@ function collectBusinessDays(year, month) {
   return businessDays;
 }
 
-/**
- * Formats a Date as Japanese year/month/day with weekday.
- * @param {Date} date
- */
-function formatJapaneseDate(date) {
+function formatPlainDate(date) {
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
   const day = date.getDate();
-  const weekday = weekdayNames[date.getDay()];
-  return `${year}年${month}月${day}日（${weekday}）`;
+  return `${year}/${month}/${day}`;
 }
 
 function renderMessage(message) {
   resultSection.innerHTML = "";
+  lastComputedDates = null;
   const p = document.createElement("p");
   p.className = "supporting-text";
   p.textContent = message;
@@ -88,12 +82,18 @@ function renderMessage(message) {
 
 function renderResult(year, month, targetDate, businessDays) {
   resultSection.innerHTML = "";
-  lastComputedDate = new Date(targetDate.getTime());
+  lastComputedDates = {
+    second: new Date(businessDays[1].getTime()),
+    third: new Date(targetDate.getTime()),
+  };
 
-  const value = document.createElement("p");
-  value.className = "result-value";
-  const formatted = `${targetDate.getFullYear()}/${targetDate.getMonth() + 1}/${targetDate.getDate()}`;
-  value.textContent = `三菱UFJe売却：${formatted}`;
+  const secondValue = document.createElement("p");
+  secondValue.className = "result-value";
+  secondValue.textContent = `楽天売却①、マネックス売却：${formatPlainDate(lastComputedDates.second)}`;
+
+  const thirdValue = document.createElement("p");
+  thirdValue.className = "result-value";
+  thirdValue.textContent = `三菱UFJe売却：${formatPlainDate(lastComputedDates.third)}`;
 
   const button = document.createElement("button");
   button.type = "button";
@@ -101,7 +101,7 @@ function renderResult(year, month, targetDate, businessDays) {
   button.textContent = "カレンダーに追加";
   button.addEventListener("click", handleCalendarButtonClick);
 
-  resultSection.append(value, button);
+  resultSection.append(secondValue, thirdValue, button);
 }
 
 const holidayCache = new Map();
@@ -273,15 +273,16 @@ function parseISODateString(iso) {
 }
 
 function handleCalendarButtonClick() {
-  if (!lastComputedDate) {
+  if (!lastComputedDates) {
     return;
   }
-  const script = buildCalendarAppleScript(lastComputedDate);
+  const script = buildCalendarAppleScript(lastComputedDates);
   const url = `applescript://com.apple.scripteditor?action=new&script=${encodeURIComponent(script)}`;
   window.location.href = url;
 }
 
-function buildCalendarAppleScript(date) {
+function buildCalendarAppleScript(dates) {
+  const { second, third } = dates;
   const monthNames = [
     "January",
     "February",
@@ -297,24 +298,38 @@ function buildCalendarAppleScript(date) {
     "December",
   ];
 
-  const monthName = monthNames[date.getMonth()];
-  const day = date.getDate();
-  const year = date.getFullYear();
-  const baseScript = `
-set theDate to current date
-set year of theDate to ${year}
-set month of theDate to ${monthName}
-set day of theDate to ${day}
-set time of theDate to (8 * hours)
-copy theDate to theEndDate
-set time of theEndDate to (12 * hours)
+  const createEventBlock = (summary, date) => {
+    const monthName = monthNames[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return [
+      "    set theDate to current date",
+      `    set year of theDate to ${year}`,
+      `    set month of theDate to ${monthName}`,
+      `    set day of theDate to ${day}`,
+      "    set time of theDate to (8 * hours)",
+      "    copy theDate to theEndDate",
+      "    set time of theEndDate to (12 * hours)",
+      `    make new event with properties {summary:"${summary}", start date:theDate, end date:theEndDate}`,
+    ].join("\n");
+  };
 
+  const blocks = [];
+  if (second) {
+    blocks.push(createEventBlock("楽天売却①、マネックス売却", second));
+  }
+  if (third) {
+    blocks.push(createEventBlock("三菱UFJe売却", third));
+  }
+
+  const scriptBody = blocks.join("\n\n");
+
+  return `
 tell application "Calendar"
   activate
   tell calendar 1
-    make new event with properties {summary:"三菱UFJe売却", start date:theDate, end date:theEndDate}
+${scriptBody}
   end tell
 end tell
-`;
-  return baseScript.trim();
+`.trim();
 }
