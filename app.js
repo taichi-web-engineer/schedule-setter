@@ -298,21 +298,25 @@ function buildCalendarAppleScript(dates) {
     "December",
   ];
 
-  const createEventBlock = (summary, date) => {
-    const monthName = monthNames[date.getMonth()];
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return [
-      "    set theDate to current date",
-      `    set year of theDate to ${year}`,
-      `    set month of theDate to ${monthName}`,
-      `    set day of theDate to ${day}`,
-      "    set time of theDate to (8 * hours)",
-      "    copy theDate to theEndDate",
-      "    set time of theEndDate to (12 * hours)",
-      `    make new event with properties {summary:"${summary}", start date:theDate, end date:theEndDate}`,
-    ].join("\n");
-  };
+const createEventBlock = (summary, date) => {
+  const monthName = monthNames[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return [
+    "    set theDate to current date",
+    `    set year of theDate to ${year}`,
+    `    set month of theDate to ${monthName}`,
+    `    set day of theDate to ${day}`,
+    "    set time of theDate to (9 * hours)",
+    "    copy theDate to theEndDate",
+    "    set time of theEndDate to (12 * hours)",
+    `    set theEvent to make new event with properties {summary:"${summary}", start date:theDate, end date:theEndDate}`,
+    "    tell theEvent",
+    "      make new display alarm at end with properties {trigger interval:-60}",
+    "      make new display alarm at end with properties {trigger interval:-30}",
+    "    end tell",
+  ].join("\n");
+};
 
   const blocks = [];
   if (second) {
