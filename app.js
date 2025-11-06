@@ -2,6 +2,8 @@ const form = document.getElementById("month-form");
 const monthInput = document.getElementById("month-input");
 const resultSection = document.getElementById("result");
 
+const HOLIDAY_MODULE_URL = "https://esm.sh/@holiday-jp/holiday_jp@2.5.1";
+
 // Ensure the month input defaults to the current month if possible.
 const now = new Date();
 const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -9,8 +11,14 @@ const defaultValue = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() +
 monthInput.value = defaultValue;
 
 let lastComputedDates = null;
+let holidayJpModule = null;
 
-form.addEventListener("submit", (event) => {
+const holidayModulePromise = import(HOLIDAY_MODULE_URL).then((mod) => {
+  holidayJpModule = mod.default ?? mod;
+  return holidayJpModule;
+});
+
+function handleFormSubmit(event) {
   event.preventDefault();
   if (!monthInput.value) {
     renderMessage("年月を選択してください。");
@@ -34,10 +42,17 @@ form.addEventListener("submit", (event) => {
 
   const target = businessDays[2];
   renderResult(year, month, target, businessDays);
-});
+}
 
-// Draw the first result immediately with the default month.
-form.dispatchEvent(new Event("submit"));
+holidayModulePromise
+  .then(() => {
+    form.addEventListener("submit", handleFormSubmit);
+    form.dispatchEvent(new Event("submit"));
+  })
+  .catch((error) => {
+    console.error("holiday_jp の読み込みに失敗しました", error);
+    renderMessage("祝日データの読み込みに失敗しました。ネットワーク接続を確認して再読み込みしてください。");
+  });
 
 /**
  * Collects business days (Mon-Fri excluding Japanese public holidays) within a given month.
@@ -117,147 +132,19 @@ function getJapaneseHolidaySet(year) {
     return holidayCache.get(year);
   }
 
-  const holidays = new Set();
-  const add = (date) => holidays.add(toISODateString(date));
-  const addFixed = (month, day, condition = true) => {
-    if (condition) {
-      add(new Date(year, month - 1, day));
-    }
-  };
-
-  const nthWeekdayOfMonth = (month, occurrence, weekday) => {
-    const firstOfMonth = new Date(year, month - 1, 1);
-    const firstWeekday = firstOfMonth.getDay();
-    const offset = (7 + weekday - firstWeekday) % 7;
-    const day = 1 + offset + 7 * (occurrence - 1);
-    return new Date(year, month - 1, day);
-  };
-
-  const specialShifts = {
-    2020: {
-      marine: [7, 23],
-      sports: [7, 24],
-      mountain: [8, 10],
-    },
-    2021: {
-      marine: [7, 22],
-      sports: [7, 23],
-      mountain: [8, 8],
-    },
-  };
-
-  // Fixed-date holidays
-  addFixed(1, 1); // 元日
-  addFixed(2, 11); // 建国記念の日
-  if (year >= 2020) {
-    addFixed(2, 23); // 天皇誕生日（令和）
-  } else if (year >= 1989 && year <= 2018) {
-    addFixed(12, 23); // 平成時代の天皇誕生日
-  }
-  addFixed(4, 29); // 昭和の日
-  addFixed(5, 3); // 憲法記念日
-  addFixed(5, 4); // みどりの日
-  addFixed(5, 5); // こどもの日
-  addFixed(11, 3); // 文化の日
-  addFixed(11, 23); // 勤労感謝の日
-
-  // 成人の日
-  if (year >= 2000) {
-    add(nthWeekdayOfMonth(1, 2, 1));
-  } else if (year >= 1949) {
-    addFixed(1, 15);
+  if (!holidayJpModule) {
+    throw new Error("holiday_jp が初期化されていません。");
   }
 
-  // 春分の日・秋分の日（近似式、1980-2099で有効）
-  add(calculateVernalEquinox(year));
-  add(calculateAutumnalEquinox(year));
-
-  // 海の日
-  if (specialShifts[year]?.marine) {
-    const [month, day] = specialShifts[year].marine;
-    add(new Date(year, month - 1, day));
-  } else if (year >= 2003) {
-    add(nthWeekdayOfMonth(7, 3, 1));
-  } else if (year >= 1996) {
-    addFixed(7, 20);
-  }
-
-  // 山の日 特例
-  if (specialShifts[year]?.mountain) {
-    const [month, day] = specialShifts[year].mountain;
-    add(new Date(year, month - 1, day));
-  } else if (year >= 2016) {
-    addFixed(8, 11);
-  }
-
-  // 敬老の日
-  if (year >= 2003) {
-    add(nthWeekdayOfMonth(9, 3, 1));
-  } else if (year >= 1966) {
-    addFixed(9, 15);
-  }
-
-  // スポーツの日（旧 体育の日）
-  if (specialShifts[year]?.sports) {
-    const [month, day] = specialShifts[year].sports;
-    add(new Date(year, month - 1, day));
-  } else if (year >= 2000) {
-    add(nthWeekdayOfMonth(10, 2, 1));
-  } else if (year >= 1966) {
-    addFixed(10, 10);
-  }
-
-  // 振替休日
-  const sortedHolidays = Array.from(holidays)
-    .map((iso) => parseISODateString(iso))
-    .sort((a, b) => a - b);
-  const substitutes = [];
-  for (const date of sortedHolidays) {
-    if (date.getDay() === 0) {
-      const candidate = new Date(date);
-      do {
-        candidate.setDate(candidate.getDate() + 1);
-      } while (holidays.has(toISODateString(candidate)));
-      substitutes.push(new Date(candidate));
-    }
-  }
-  substitutes.forEach(add);
-
-  // 国民の休日
-  const extraHolidays = [];
-  for (let month = 1; month <= 12; month += 1) {
-    for (let day = 1; day <= 31; day += 1) {
-      const date = new Date(year, month - 1, day);
-      if (date.getMonth() !== month - 1) {
-        break;
-      }
-      const iso = toISODateString(date);
-      if (holidays.has(iso)) {
-        continue;
-      }
-      const prev = new Date(date);
-      prev.setDate(prev.getDate() - 1);
-      const next = new Date(date);
-      next.setDate(next.getDate() + 1);
-      if (holidays.has(toISODateString(prev)) && holidays.has(toISODateString(next))) {
-        extraHolidays.push(new Date(date));
-      }
-    }
-  }
-  extraHolidays.forEach(add);
-
+  const startOfYear = new Date(year, 0, 1);
+  const endOfYear = new Date(year, 11, 31);
+  const isoHolidays = holidayJpModule.between(startOfYear, endOfYear).map(({ date }) => {
+    const normalized = date instanceof Date ? date : new Date(date);
+    return toISODateString(normalized);
+  });
+  const holidays = new Set(isoHolidays);
   holidayCache.set(year, holidays);
   return holidays;
-}
-
-function calculateVernalEquinox(year) {
-  const day = Math.floor(20.8431 + 0.242194 * (year - 1980)) - Math.floor((year - 1980) / 4);
-  return new Date(year, 2, day);
-}
-
-function calculateAutumnalEquinox(year) {
-  const day = Math.floor(23.2488 + 0.242194 * (year - 1980)) - Math.floor((year - 1980) / 4);
-  return new Date(year, 8, day);
 }
 
 function toISODateString(date) {
@@ -265,11 +152,6 @@ function toISODateString(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function parseISODateString(iso) {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Date(year, month - 1, day);
 }
 
 function handleCalendarButtonClick() {
