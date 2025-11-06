@@ -2,7 +2,7 @@ const form = document.getElementById("month-form");
 const monthInput = document.getElementById("month-input");
 const resultSection = document.getElementById("result");
 
-const HOLIDAY_MODULE_URL = "https://esm.sh/@holiday-jp/holiday_jp@2.5.1";
+const HOLIDAY_MODULE_URL = "https://esm.sh/@holiday-jp/holiday_jp@latest";
 
 // Ensure the month input defaults to the current month if possible.
 const now = new Date();
