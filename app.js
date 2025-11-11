@@ -222,6 +222,13 @@ function renderResult(dates) {
 }
 
 const holidayCache = new Map();
+// Treat year-end/new-year dates as non-business days even if not official holidays.
+const YEAR_END_NEW_YEAR_HOLIDAYS = [
+  { month: 12, day: 31 },
+  { month: 1, day: 1 },
+  { month: 1, day: 2 },
+  { month: 1, day: 3 },
+];
 
 /**
  * Returns a Set of ISO date strings (YYYY-MM-DD) representing Japanese public holidays for the given year.
@@ -245,6 +252,11 @@ function getJapaneseHolidaySet(year) {
     return toISODateString(normalized);
   });
   const holidays = new Set(isoHolidays);
+  YEAR_END_NEW_YEAR_HOLIDAYS.forEach(({ month, day }) => {
+    const monthString = String(month).padStart(2, "0");
+    const dayString = String(day).padStart(2, "0");
+    holidays.add(`${year}-${monthString}-${dayString}`);
+  });
   holidayCache.set(year, holidays);
   return holidays;
 }
