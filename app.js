@@ -64,6 +64,16 @@ function handleFormSubmit(event) {
     return;
   }
 
+  let fifthBusinessDayFromTwentySix;
+  try {
+    const startingPoint = new Date(year, month - 1, 26);
+    fifthBusinessDayFromTwentySix = findNthBusinessDayFromDate(startingPoint, 5);
+  } catch (error) {
+    console.error("26日以降の平日の計算に失敗しました", error);
+    renderMessage("26日から数えて5番目の平日を計算できませんでした。");
+    return;
+  }
+
   const computedDates = {
     second: businessDays[1],
     third: businessDays[2],
@@ -71,6 +81,7 @@ function handleFormSubmit(event) {
     secondFromEight: businessDaysFromEight[1],
     secondFromTwelve: businessDaysFromTwelve[1],
     secondFromTwentySix: businessDaysFromTwentySix[1],
+    fifthFromTwentySix: fifthBusinessDayFromTwentySix,
   };
 
   renderResult(computedDates);
@@ -111,6 +122,39 @@ function collectBusinessDays(year, month) {
   return businessDays;
 }
 
+function findNthBusinessDayFromDate(startDate, targetIndex) {
+  if (targetIndex < 1) {
+    throw new Error("targetIndex must be 1以上である必要があります。");
+  }
+
+  const cursor = new Date(startDate.getTime());
+  let count = 0;
+  const MAX_ITERATIONS = 120;
+
+  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration += 1) {
+    if (isBusinessDay(cursor)) {
+      count += 1;
+      if (count === targetIndex) {
+        return new Date(cursor.getTime());
+      }
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  throw new Error("指定回数分の平日を取得できませんでした。");
+}
+
+function isBusinessDay(date) {
+  const dayOfWeek = date.getDay();
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+  if (!isWeekday) {
+    return false;
+  }
+  const holidays = getJapaneseHolidaySet(date.getFullYear());
+  const iso = toISODateString(date);
+  return !holidays.has(iso);
+}
+
 function formatPlainDate(date) {
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
@@ -129,7 +173,7 @@ function renderMessage(message) {
 
 function renderResult(dates) {
   resultSection.innerHTML = "";
-  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix } = dates;
+  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromTwentySix } = dates;
   lastComputedDates = {
     second: new Date(second.getTime()),
     third: new Date(third.getTime()),
@@ -137,6 +181,7 @@ function renderResult(dates) {
     secondFromEight: new Date(secondFromEight.getTime()),
     secondFromTwelve: new Date(secondFromTwelve.getTime()),
     secondFromTwentySix: new Date(secondFromTwentySix.getTime()),
+    fifthFromTwentySix: new Date(fifthFromTwentySix.getTime()),
   };
 
   const secondValue = document.createElement("p");
@@ -163,13 +208,17 @@ function renderResult(dates) {
   sixthValue.className = "result-value";
   sixthValue.textContent = `三菱UFJ売却：${formatPlainDate(lastComputedDates.secondFromTwentySix)}`;
 
+  const auValue = document.createElement("p");
+  auValue.className = "result-value";
+  auValue.textContent = `auじぶん銀行出金：${formatPlainDate(lastComputedDates.fifthFromTwentySix)}`;
+
   const button = document.createElement("button");
   button.type = "button";
   button.className = "calendar-button";
   button.textContent = "カレンダーに追加";
   button.addEventListener("click", handleCalendarButtonClick);
 
-  resultSection.append(secondValue, thirdValue, sbiValue, fourthValue, fifthValue, sixthValue, button);
+  resultSection.append(secondValue, thirdValue, sbiValue, fourthValue, fifthValue, sixthValue, auValue, button);
 }
 
 const holidayCache = new Map();
@@ -217,7 +266,7 @@ function handleCalendarButtonClick() {
 }
 
 function buildCalendarAppleScript(dates) {
-  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix } = dates;
+  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromTwentySix } = dates;
   const monthNames = [
     "January",
     "February",
@@ -271,6 +320,9 @@ const createEventBlock = (summary, date) => {
   }
   if (secondFromTwentySix) {
     blocks.push(createEventBlock("三菱UFJ売却", secondFromTwentySix));
+  }
+  if (fifthFromTwentySix) {
+    blocks.push(createEventBlock("auじぶん銀行出金", fifthFromTwentySix));
   }
 
   const scriptBody = blocks.join("\n\n");
