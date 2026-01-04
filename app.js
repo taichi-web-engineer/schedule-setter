@@ -64,13 +64,13 @@ function handleFormSubmit(event) {
     return;
   }
 
-  let fifthBusinessDayFromTwentySix;
+  let fifthBusinessDayFromSix;
   try {
-    const startingPoint = new Date(year, month - 1, 26);
-    fifthBusinessDayFromTwentySix = findNthBusinessDayFromDate(startingPoint, 5);
+    const startingPoint = new Date(year, month, 6);
+    fifthBusinessDayFromSix = findNthBusinessDayFromDate(startingPoint, 5);
   } catch (error) {
-    console.error("26日以降の平日の計算に失敗しました", error);
-    renderMessage("26日から数えて5番目の平日を計算できませんでした。");
+    console.error("翌月6日以降の平日の計算に失敗しました", error);
+    renderMessage("翌月6日から数えて5番目の平日を計算できませんでした。");
     return;
   }
 
@@ -81,7 +81,7 @@ function handleFormSubmit(event) {
     secondFromEight: businessDaysFromEight[1],
     secondFromTwelve: businessDaysFromTwelve[1],
     secondFromTwentySix: businessDaysFromTwentySix[1],
-    fifthFromTwentySix: fifthBusinessDayFromTwentySix,
+    fifthFromSix: fifthBusinessDayFromSix,
   };
 
   renderResult(computedDates);
@@ -173,7 +173,7 @@ function renderMessage(message) {
 
 function renderResult(dates) {
   resultSection.innerHTML = "";
-  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromTwentySix } = dates;
+  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromSix } = dates;
   lastComputedDates = {
     second: new Date(second.getTime()),
     third: new Date(third.getTime()),
@@ -181,7 +181,7 @@ function renderResult(dates) {
     secondFromEight: new Date(secondFromEight.getTime()),
     secondFromTwelve: new Date(secondFromTwelve.getTime()),
     secondFromTwentySix: new Date(secondFromTwentySix.getTime()),
-    fifthFromTwentySix: new Date(fifthFromTwentySix.getTime()),
+    fifthFromSix: new Date(fifthFromSix.getTime()),
   };
 
   const secondValue = document.createElement("p");
@@ -210,7 +210,7 @@ function renderResult(dates) {
 
   const auValue = document.createElement("p");
   auValue.className = "result-value";
-  auValue.textContent = `auじぶん銀行出金：${formatPlainDate(lastComputedDates.fifthFromTwentySix)}`;
+  auValue.textContent = `auじぶん銀行出金：${formatPlainDate(lastComputedDates.fifthFromSix)}`;
 
   const button = document.createElement("button");
   button.type = "button";
@@ -278,7 +278,7 @@ function handleCalendarButtonClick() {
 }
 
 function buildCalendarAppleScript(dates) {
-  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromTwentySix } = dates;
+  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromSix } = dates;
   const monthNames = [
     "January",
     "February",
@@ -333,8 +333,8 @@ const createEventBlock = (summary, date) => {
   if (secondFromTwentySix) {
     blocks.push(createEventBlock("三菱UFJ売却", secondFromTwentySix));
   }
-  if (fifthFromTwentySix) {
-    blocks.push(createEventBlock("auじぶん銀行出金", fifthFromTwentySix));
+  if (fifthFromSix) {
+    blocks.push(createEventBlock("auじぶん銀行出金", fifthFromSix));
   }
 
   const scriptBody = blocks.join("\n\n");
