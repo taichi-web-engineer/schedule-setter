@@ -35,8 +35,8 @@ function handleFormSubmit(event) {
   }
 
   const businessDays = collectBusinessDays(year, month);
-  if (businessDays.length < 3) {
-    renderMessage("この月には平日（祝日除く）が3日未満です。");
+  if (businessDays.length < 2) {
+    renderMessage("この月には平日（祝日除く）が2日未満です。");
     return;
   }
 
@@ -58,12 +58,6 @@ function handleFormSubmit(event) {
     return;
   }
 
-  const businessDaysFromTwentySix = businessDays.filter((date) => date.getDate() >= 26);
-  if (businessDaysFromTwentySix.length < 2) {
-    renderMessage("この月の26日以降に平日（祝日除く）が2日未満です。");
-    return;
-  }
-
   let fifthBusinessDayFromSix;
   try {
     const startingPoint = new Date(year, month, 6);
@@ -76,11 +70,9 @@ function handleFormSubmit(event) {
 
   const computedDates = {
     second: businessDays[1],
-    third: businessDays[2],
     secondFromThree: businessDaysFromThree[1],
     secondFromEight: businessDaysFromEight[1],
     secondFromTwelve: businessDaysFromTwelve[1],
-    secondFromTwentySix: businessDaysFromTwentySix[1],
     fifthFromSix: fifthBusinessDayFromSix,
   };
 
@@ -173,24 +165,18 @@ function renderMessage(message) {
 
 function renderResult(dates) {
   resultSection.innerHTML = "";
-  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromSix } = dates;
+  const { second, secondFromThree, secondFromEight, secondFromTwelve, fifthFromSix } = dates;
   lastComputedDates = {
     second: new Date(second.getTime()),
-    third: new Date(third.getTime()),
     secondFromThree: new Date(secondFromThree.getTime()),
     secondFromEight: new Date(secondFromEight.getTime()),
     secondFromTwelve: new Date(secondFromTwelve.getTime()),
-    secondFromTwentySix: new Date(secondFromTwentySix.getTime()),
     fifthFromSix: new Date(fifthFromSix.getTime()),
   };
 
   const secondValue = document.createElement("p");
   secondValue.className = "result-value";
   secondValue.textContent = `楽天売却①、マネックス売却：${formatPlainDate(lastComputedDates.second)}`;
-
-  const thirdValue = document.createElement("p");
-  thirdValue.className = "result-value";
-  thirdValue.textContent = `三菱UFJe売却：${formatPlainDate(lastComputedDates.third)}`;
 
   const sbiValue = document.createElement("p");
   sbiValue.className = "result-value";
@@ -204,10 +190,6 @@ function renderResult(dates) {
   fifthValue.className = "result-value";
   fifthValue.textContent = `楽天売却③：${formatPlainDate(lastComputedDates.secondFromTwelve)}`;
 
-  const sixthValue = document.createElement("p");
-  sixthValue.className = "result-value";
-  sixthValue.textContent = `三菱UFJ売却：${formatPlainDate(lastComputedDates.secondFromTwentySix)}`;
-
   const auValue = document.createElement("p");
   auValue.className = "result-value";
   auValue.textContent = `auじぶん銀行出金：${formatPlainDate(lastComputedDates.fifthFromSix)}`;
@@ -218,7 +200,7 @@ function renderResult(dates) {
   button.textContent = "カレンダーに追加";
   button.addEventListener("click", handleCalendarButtonClick);
 
-  resultSection.append(secondValue, thirdValue, sbiValue, fourthValue, fifthValue, sixthValue, auValue, button);
+  resultSection.append(secondValue, sbiValue, fourthValue, fifthValue, auValue, button);
 }
 
 const holidayCache = new Map();
@@ -272,79 +254,90 @@ function handleCalendarButtonClick() {
   if (!lastComputedDates) {
     return;
   }
-  const script = buildCalendarAppleScript(lastComputedDates);
-  const url = `applescript://com.apple.scripteditor?action=new&script=${encodeURIComponent(script)}`;
-  window.location.href = url;
+  const calendarText = buildCalendarIcs(lastComputedDates);
+  const blob = new Blob([calendarText], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `投信売却日_${monthInput.value || "schedule"}.ics`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function buildCalendarAppleScript(dates) {
-  const { second, third, secondFromThree, secondFromEight, secondFromTwelve, secondFromTwentySix, fifthFromSix } = dates;
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-const createEventBlock = (summary, date) => {
-  const monthName = monthNames[date.getMonth()];
-  const day = date.getDate();
-  const year = date.getFullYear();
-  return [
-    "    set theDate to current date",
-    `    set year of theDate to ${year}`,
-    `    set month of theDate to ${monthName}`,
-    `    set day of theDate to ${day}`,
-    "    set time of theDate to (9 * hours)",
-    "    copy theDate to theEndDate",
-    "    set time of theEndDate to (12 * hours)",
-    `    set theEvent to make new event with properties {summary:"${summary}", start date:theDate, end date:theEndDate}`,
-    "    tell theEvent",
-    "      make new display alarm at end with properties {trigger interval:-60}",
-    "      make new display alarm at end with properties {trigger interval:-30}",
-    "    end tell",
-  ].join("\n");
-};
-
-  const blocks = [];
+function buildCalendarIcs(dates) {
+  const { second, secondFromThree, secondFromEight, secondFromTwelve, fifthFromSix } = dates;
+  const events = [];
   if (second) {
-    blocks.push(createEventBlock("楽天売却①、マネックス売却", second));
-  }
-  if (third) {
-    blocks.push(createEventBlock("三菱UFJe売却", third));
+    events.push(createCalendarEvent("楽天売却①、マネックス売却", second));
   }
   if (secondFromThree) {
-    blocks.push(createEventBlock("SBI売却", secondFromThree));
+    events.push(createCalendarEvent("SBI売却", secondFromThree));
   }
   if (secondFromEight) {
-    blocks.push(createEventBlock("楽天売却②", secondFromEight));
+    events.push(createCalendarEvent("楽天売却②", secondFromEight));
   }
   if (secondFromTwelve) {
-    blocks.push(createEventBlock("楽天売却③", secondFromTwelve));
-  }
-  if (secondFromTwentySix) {
-    blocks.push(createEventBlock("三菱UFJ売却", secondFromTwentySix));
+    events.push(createCalendarEvent("楽天売却③", secondFromTwelve));
   }
   if (fifthFromSix) {
-    blocks.push(createEventBlock("auじぶん銀行出金", fifthFromSix));
+    events.push(createCalendarEvent("auじぶん銀行出金", fifthFromSix));
   }
 
-  const scriptBody = blocks.join("\n\n");
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//schedule-setter//fund calendar//JA",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    ...events.flat(),
+    "END:VCALENDAR",
+  ];
 
-  return `
-tell application "Calendar"
-  activate
-  tell calendar 1
-${scriptBody}
-  end tell
-end tell
-`.trim();
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+function createCalendarEvent(summary, date) {
+  const uidDate = formatIcsDate(date);
+  return [
+    "BEGIN:VEVENT",
+    `UID:${uidDate}-${encodeURIComponent(summary)}@schedule-setter.local`,
+    `DTSTAMP:${formatIcsTimestamp(new Date())}`,
+    `DTSTART;TZID=Asia/Tokyo:${uidDate}T090000`,
+    `DTEND;TZID=Asia/Tokyo:${uidDate}T120000`,
+    `SUMMARY:${escapeIcsText(summary)}`,
+    "BEGIN:VALARM",
+    "TRIGGER:-PT60M",
+    "ACTION:DISPLAY",
+    `DESCRIPTION:${escapeIcsText(summary)}`,
+    "END:VALARM",
+    "BEGIN:VALARM",
+    "TRIGGER:-PT30M",
+    "ACTION:DISPLAY",
+    `DESCRIPTION:${escapeIcsText(summary)}`,
+    "END:VALARM",
+    "END:VEVENT",
+  ];
+}
+
+function formatIcsDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+function formatIcsTimestamp(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+}
+
+function escapeIcsText(value) {
+  return String(value).replaceAll("\\", "\\\\").replaceAll(";", "\\;").replaceAll(",", "\\,").replaceAll("\n", "\\n");
 }
